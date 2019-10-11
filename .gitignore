@@ -1,0 +1,8 @@
+build/
+.build/
+*-build/
+*_build/
+
+.vs/
+.vscode/
+.idea/
