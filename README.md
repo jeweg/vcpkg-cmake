@@ -11,6 +11,11 @@ What we plan to do here, as part of the CMake run:
 * git submodule is not powerful enough to specify per-port commits.
 * CMake's `ExternalProject` (CMake 2.8.2+) seems to wrap git nicely, but again, the port-specific commits would be a problem.
 
+git can of course be used directly like his:
+    git clone $vcpkg_url .
+    git checkout $vcpkg_commit 
+    git checkout $hiredis_commit ports/hiredis
+
 ### Build time vs CMake configuration time
 * Bootstrapping vcpkg and ports?
 * Installing packages?
