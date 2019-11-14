@@ -16,3 +16,31 @@ include(vcpkg_cmake_common.cmake)
 # * install the packages w/ the specified triplet and features.
 
 # TODO: will this update a package if we switched a packcage commit hash? -> test.
+
+find_package(Git)
+if (NOT GIT_FOUND)
+    message(FATAL_ERROR "git executable not found!")
+endif()
+
+# ===================================================================
+# Read the serialized configuration
+
+# We read it into a sort of associative container, represented
+# by specifically named variables:
+# set(config_sections) # list of sections
+# set(config_section_<name>_keys) # list of keys in section
+# set(config_section_<name>_value_for_<key>)
+
+if (NOT EXISTS "${__vcpkg_cmake__configuration_file}")
+    message(FATAL_ERROR "vcpkg configuration not found at ${__vcpkg_cmake__configuration_file}, re-run cmake.")
+endif()
+
+__vcpkg_cmake__parse_ini_file("${__vcpkg_cmake__configuration_file}" config)
+
+message("Configuration data:")
+foreach (section IN LISTS config_sections)
+    message("  [${section}]")
+    foreach (key IN LISTS config_section_${section}_keys)
+        message("    ${key}=${config_section_${section}_value_for_${key}}")
+    endforeach()
+endforeach()
