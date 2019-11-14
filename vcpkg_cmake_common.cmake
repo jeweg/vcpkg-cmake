@@ -10,6 +10,10 @@ message("build_tree_root = ${build_tree_root}")
 message("__vcpkg_cmake__configuration_file = ${__vcpkg_cmake__configuration_file}")
 message("__vcpkg_cmake__update_script = ${__vcpkg_cmake__update_script}")
 
+# Reads data from an .ini file into an associative data structure represented by specifically named variables:
+# <variable_prefix>_sections): the list of section names
+# <variable_prefix>_section_<section name>_keys: the list of keys names in that section 
+# <variable_prefix>_section_<section name>_value_for_<key name>: the value for that key in that section
 function(__vcpkg_cmake__parse_ini_file file_path variable_prefix)
 
     # TODO: this code will not remove trailing comments in section or key-value lines.

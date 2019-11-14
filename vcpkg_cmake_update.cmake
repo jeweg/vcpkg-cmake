@@ -25,12 +25,6 @@ endif()
 # ===================================================================
 # Read the serialized configuration
 
-# We read it into a sort of associative container, represented
-# by specifically named variables:
-# set(config_sections) # list of sections
-# set(config_section_<name>_keys) # list of keys in section
-# set(config_section_<name>_value_for_<key>)
-
 if (NOT EXISTS "${__vcpkg_cmake__configuration_file}")
     message(FATAL_ERROR "vcpkg configuration not found at ${__vcpkg_cmake__configuration_file}, re-run cmake.")
 endif()
