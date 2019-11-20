@@ -51,3 +51,6 @@ function(__vcpkg_cmake__parse_ini_file file_path variable_prefix)
     endforeach()
 endfunction()
 
+function(vcpkg_cmake_msg)
+    message(STATUS "[vcpkg-cmake] " ${ARGN})
+endfunction()

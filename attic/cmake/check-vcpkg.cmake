@@ -22,7 +22,7 @@ set(VCPKG_TARGET_TRIPLET "${VCPKG_TRIPLET}" CACHE STRING "" FORCE)
 #
 #################################################
 
-set(VCPKG_EXEC_STALE TRUE)
+set(vcpkg_exec_stale TRUE)
 if (EXISTS ${VCPKG_EXEC}) 
     set(output)
     execute_process(
