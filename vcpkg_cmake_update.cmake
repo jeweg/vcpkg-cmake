@@ -35,7 +35,7 @@ foreach (section IN LISTS config_sections)
 endforeach()
 
 # ===================================================================
-# Setup
+# Setup, mostly shortcuts for configuration keys
 
 set(vcpkg_repo_url "${config_section_vcpkg_value_for_repo_url}")
 set(vcpkg_dir "${config_section_vcpkg_value_for_vcpkg_dir}")
@@ -51,52 +51,102 @@ endif()
 # ===================================================================
 # Helpers
 
-function(run_git)
-    find_package(Git)
-    if (NOT GIT_FOUND)
-        vcpkg_cmake_msg(FATAL_ERROR "git executable not found!")
-    endif()
-    cmake_parse_arguments(ARG "" "WORKING_DIR" "" ${ARGN})
-    if (NOT ARG_WORKING_DIR) 
-        set(ARGH_WORKING_DIR "${config_section_vcpkg_value_for_repo_url}")
+set(cmd_last_result)
+
+function(cmd_run)
+    cmake_parse_arguments(ARG "" "WORKING_DIRECTORY" "" ${ARGN})
+    if (NOT ARG_WORKING_DIRECTORY) 
+        set(ARG_WORKING_DIRECTORY "${vcpkg_dir}")
     endif()
     execute_process(
-        COMMAND ${GIT_EXECUTABLE} ${ARG_UNPARSED_ARGUMENTS}
-        WORKING_DIRECTORY "${ARG_WORKING_DIR}"
+        COMMAND ${ARG_UNPARSED_ARGUMENTS}
+        WORKING_DIRECTORY "${ARG_WORKING_DIRECTORY}"
         RESULT_VARIABLE return_code
         OUTPUT_VARIABLE cmd_stdout
         ERROR_VARIABLE cmd_stderr 
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_STRIP_TRAILING_WHITESPACE
     )
+    if (NOT return_code EQUAL 0)
+        vcpkg_cmake_msg("Command failed: [${ARG_UNPARSED_ARGUMENTS}]")
+        vcpkg_cmake_msg("  in: ${ARG_WORKING_DIRECTORY}")
+        vcpkg_cmake_msg("  returned: ${return_code}")
+        vcpkg_cmake_msg("  output: ${cmd_stderr}")
+    endif()
     # Debug output
-    if (ON)
+    if (OFF)
         vcpkg_cmake_msg("running git command: [git ${ARG_UNPARSED_ARGUMENTS}]")
         vcpkg_cmake_msg("    return code: ${return_code}")
         vcpkg_cmake_msg("    cmd_stdout:  ${cmd_stdout}")
         vcpkg_cmake_msg("    cmd_stderr:  ${cmd_stderr}")
     endif()
+    # TODO: maybe more error handling built-in.
+    set(cmd_last_result "${return_code}" PARENT_SCOPE)
 endfunction()   
+
+
+function(cmd_git)
+    find_package(Git)
+    if (NOT GIT_FOUND)
+        vcpkg_cmake_msg(FATAL_ERROR "git executable not found!")
+    endif()
+    set(cmd_last_result)
+    cmd_run("${GIT_EXECUTABLE}" ${ARGV})
+    set(cmd_last_result "${return_code}" PARENT_SCOPE)
+endfunction()   
+
 # ===================================================================
-# Clone vcpkg if necessary
+# Clone vcpkg (only if the directory doesn't exist)
 
 vcpkg_cmake_msg("Looking for vcpkg...")
-set(must_perform_clone FALSE)
-if (NOT EXISTS "${vcpkg_dir}") 
-    vcpkg_cmake_msg("vcpkg directory not found, cloning.")
-    set(must_perform_clone TRUE)
+
+set(needs_cloning FALSE)
+if (EXISTS "${vcpkg_dir}") 
+    if (NOT IS_DIRECTORY "${vcpkg_dir}")
+        message(FATAL_ERROR "vcpkg dir ... exists and is not a directory")
+    else()
+        file(GLOB tmp "${vcpkg_dir}/*")
+        list(LENGTH tmp tmp)
+        if (tmp EQUAL 0)
+            set(needs_cloning TRUE)
+        endif()
+    endif()
 else()
-    # TODO: check if it's from the proper url.
-
-endif()
-if (must_perform_clone)
-    run_git("clone https://github.com/microsoft/vcpkg.git"
-    WORKING_DIRECTORY)
+    file(MAKE_DIRECTORY "${vcpkg_dir}")
+    set(needs_cloning TRUE)
 endif()
 
-return()
+if (needs_cloning)
+    vcpkg_cmake_msg("Cloning vcpkg...")
+    file(MAKE_DIRECTORY "${vcpkg_dir}")
 
+    cmd_git(clone "${vcpkg_repo_url}" . WORKING_DIRECTORY "${vcpkg_dir}")
+    if (NOT cmd_last_result EQUAL 0)
+        message(FATAL_ERROR "cloning failed!")
+    endif()
+    if (vcpkg_default_commit)
+        cmd_git(checkout "${vcpkg_default_commit}" WORKING_DIRECTORY "${vcpkg_dir}")
+        if (NOT cmd_last_result EQUAL 0)
+            message(FATAL_ERROR "checkout failed!")
+        endif()
+    endif()
+
+endif()
+
+# We now assume a valid vcpkg in the specified directory
 
 set(vcpkg_exec_stale TRUE)
-if (EXISTS "${vcpkg_exec}") 
+if (NOT EXISTS "${vcpkg_exec}") 
+
+    message(FATAL_ERROR "no vcpkg executable found!")
+
+else()
+
+    if (CMAKE_NOT_USING_CONFIG_FLAGS IS_FILE "${vcpkg_exec}")
+    endif()
+
+    cmd_run("${vcpkg_exec}"
+
     set(output)
     execute_process(
         COMMAND "${vcpkg_exec}" version
@@ -115,9 +165,3 @@ if (EXISTS "${vcpkg_exec}")
         endif()
     endif()
 endif()
-
-# Try to find vcpkg.
-set(must_perform_clone ON)
-#if (EXISTS "${config_section_vcpkg_value_for_vcpkg_dir}") 
-#endif()
-
