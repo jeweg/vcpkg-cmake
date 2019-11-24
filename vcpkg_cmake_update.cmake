@@ -26,13 +26,15 @@ endif()
 
 __vcpkg_cmake__parse_ini_file("${__vcpkg_cmake__configuration_file}" config)
 
-vcpkg_cmake_msg("Configuration data:")
-foreach (section IN LISTS config_sections)
-    vcpkg_cmake_msg("  [${section}]")
-    foreach (key IN LISTS config_section_${section}_keys)
-        vcpkg_cmake_msg("    ${key}=${config_section_${section}_value_for_${key}}")
+if (ON)
+    vcpkg_cmake_msg("Configuration:")
+    foreach (section IN LISTS config_sections)
+        vcpkg_cmake_msg("  [${section}]")
+        foreach (key IN LISTS config_section_${section}_keys)
+            vcpkg_cmake_msg("    ${key}=${config_section_${section}_value_for_${key}}")
+        endforeach()
     endforeach()
-endforeach()
+endif()
 
 # ===================================================================
 # Setup, mostly shortcuts for configuration keys
@@ -52,6 +54,7 @@ endif()
 # Helpers
 
 set(cmd_last_result)
+set(cmd_last_output)
 
 function(cmd_run)
     cmake_parse_arguments(ARG "" "WORKING_DIRECTORY" "" ${ARGN})
@@ -62,8 +65,8 @@ function(cmd_run)
         COMMAND ${ARG_UNPARSED_ARGUMENTS}
         WORKING_DIRECTORY "${ARG_WORKING_DIRECTORY}"
         RESULT_VARIABLE return_code
-        OUTPUT_VARIABLE cmd_stdout
-        ERROR_VARIABLE cmd_stderr 
+        OUTPUT_VARIABLE cmd_output
+        ERROR_VARIABLE cmd_output 
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_STRIP_TRAILING_WHITESPACE
     )
@@ -71,17 +74,19 @@ function(cmd_run)
         vcpkg_cmake_msg("Command failed: [${ARG_UNPARSED_ARGUMENTS}]")
         vcpkg_cmake_msg("  in: ${ARG_WORKING_DIRECTORY}")
         vcpkg_cmake_msg("  returned: ${return_code}")
-        vcpkg_cmake_msg("  output: ${cmd_stderr}")
+        vcpkg_cmake_msg("  output: ${cmd_output}")
+        message(FATAL_ERROR "Command execution failed.")
     endif()
     # Debug output
     if (OFF)
         vcpkg_cmake_msg("running git command: [git ${ARG_UNPARSED_ARGUMENTS}]")
-        vcpkg_cmake_msg("    return code: ${return_code}")
-        vcpkg_cmake_msg("    cmd_stdout:  ${cmd_stdout}")
-        vcpkg_cmake_msg("    cmd_stderr:  ${cmd_stderr}")
+        vcpkg_cmake_msg("  return code: ${return_code}")
+        vcpkg_cmake_msg("  output: ${cmd_output}")
     endif()
     # TODO: maybe more error handling built-in.
     set(cmd_last_result "${return_code}" PARENT_SCOPE)
+    set(cmd_last_output "${cmd_output}" PARENT_SCOPE)
+    set(cmd_failed "${command_failed}" PARENT_SCOPE)
 endfunction()   
 
 
@@ -91,8 +96,19 @@ function(cmd_git)
         vcpkg_cmake_msg(FATAL_ERROR "git executable not found!")
     endif()
     set(cmd_last_result)
+    set(cmd_last_output)
     cmd_run("${GIT_EXECUTABLE}" ${ARGV})
-    set(cmd_last_result "${return_code}" PARENT_SCOPE)
+    set(cmd_last_result "${cmd_last_result}" PARENT_SCOPE)
+    set(cmd_last_output "${cmd_last_output}" PARENT_SCOPE)
+endfunction()   
+
+
+function(cmd_vcpkg)
+    set(cmd_last_result)
+    set(cmd_last_output)
+    cmd_run("${vcpkg_exec}" ${ARGV})
+    set(cmd_last_result "${cmd_last_result}" PARENT_SCOPE)
+    set(cmd_last_output "${cmd_last_output}" PARENT_SCOPE)
 endfunction()   
 
 # ===================================================================
@@ -103,7 +119,7 @@ vcpkg_cmake_msg("Looking for vcpkg...")
 set(needs_cloning FALSE)
 if (EXISTS "${vcpkg_dir}") 
     if (NOT IS_DIRECTORY "${vcpkg_dir}")
-        message(FATAL_ERROR "vcpkg dir ... exists and is not a directory")
+        message(FATAL_ERROR "vcpkg dir \"${vcpkg_dir}\" exists and is not a directory")
     else()
         file(GLOB tmp "${vcpkg_dir}/*")
         list(LENGTH tmp tmp)
@@ -135,33 +151,35 @@ endif()
 
 # We now assume a valid vcpkg in the specified directory
 
-set(vcpkg_exec_stale TRUE)
-if (NOT EXISTS "${vcpkg_exec}") 
-
-    message(FATAL_ERROR "no vcpkg executable found!")
-
-else()
-
-    if (CMAKE_NOT_USING_CONFIG_FLAGS IS_FILE "${vcpkg_exec}")
-    endif()
-
-    cmd_run("${vcpkg_exec}"
-
-    set(output)
-    execute_process(
-        COMMAND "${vcpkg_exec}" version
-        WORKING_DIRECTORY "${vcpkg_dir}"
-        OUTPUT_VARIABLE output)
-    message("{{ ${output} }}")
-    if (output MATCHES "version ([0-9]+\\.[0-9]+\\.[0-9]+)") 
-        set(reported_version ${CMAKE_MATCH_1})
-        set(version_file_contents)
-        file(READ "${VCPKG_ROOT}/toolsrc/VERSION.txt" version_file_contents LIMIT 100)
-        if (version_file_contents MATCHES "([0-9]+\\.[0-9]+\\.[0-9]+)") 
-            set(toolsrc_version ${CMAKE_MATCH_1})
-            if (reported_version VERSION_EQUAL toolsrc_version) 
-                set(vcpkg_exec_stale FALSE)
+function(check_if_vcpkg_stale out_result)
+    set(vcpkg_exec_stale TRUE)
+    if (EXISTS "${vcpkg_exec}") 
+        cmd_vcpkg(version)
+        if (cmd_last_output MATCHES "version ([0-9]+\\.[0-9]+\\.[0-9]+)") 
+            set(reported_version ${CMAKE_MATCH_1})
+            set(version_file_contents)
+            file(READ "${vcpkg_dir}/toolsrc/VERSION.txt" version_file_contents LIMIT 100)
+            if (version_file_contents MATCHES "([0-9]+\\.[0-9]+\\.[0-9]+)") 
+                set(toolsrc_version ${CMAKE_MATCH_1})
+                if (reported_version VERSION_EQUAL toolsrc_version) 
+                    #vcpkg_cmake_msg("vcpkg executable exists and matches sources version, skipping bootstrapping.")
+                    set(${out_result} FALSE PARENT_SCOPE)
+                    return()
+                endif()
             endif()
         endif()
     endif()
+    set(${out_result} TRUE PARENT_SCOPE)
+endfunction()
+
+check_if_vcpkg_stale(is_stale)
+if (is_stale) 
+    vcpkg_cmake_msg("Bootstrapping vcpkg...")
+    cmd_run("${vcpkg_bootstrap}")
+    check_if_vcpkg_stale(is_stale)
+    if (is_stale) 
+        vcpkg_cmake_msg("Bootstrapping failed!")
+    endif()
 endif()
+
+vcpkg_cmake_msg("vcpkg executable okay.")
