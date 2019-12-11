@@ -112,7 +112,7 @@ function(cmd_vcpkg)
 endfunction()   
 
 # ===================================================================
-# Clone vcpkg (only if the directory doesn't exist)
+# Clone vcpkg (only if the directory does not exist)
 
 vcpkg_cmake_msg("Looking for vcpkg...")
 
@@ -183,3 +183,14 @@ if (is_stale)
 endif()
 
 vcpkg_cmake_msg("vcpkg executable okay.")
+
+# ===================================================================
+# Install vcpkg packages
+
+foreach (section IN LISTS config_sections)
+    if (NOT section STREQUAL "vcpkg")
+        set(triplet "${config_section_${section}_value_for_triplet}")
+        cmd_vcpkg(version)
+    endif()
+endforeach()
+
