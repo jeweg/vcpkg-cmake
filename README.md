@@ -64,9 +64,12 @@ Called to denote the end of the package list. Runs the aforementioned internal s
 * Configure Travis/AppVeyor (no tests on Apple yet) -- or github actions?
 * Configurable: vcpkg git url (might want to use own fork), vcpkg (default) commit
 * We might want to do a shallow clone of vcpkg for space/performance. 
+* Do we remove packages when their CMake declaration vanishes? (Might just have been temporarily commented out, after all)
+* vcpkg command echoing
 
 ## References:
 * [A good overview of the different ways of integrating external libraries into a git project](https://github.com/google/googletest/tree/master/googletest#incorporating-into-an-existing-cmake-project)
 * https://www.infohit.net/blog/post/git-checkout-subdirectory-with-sparse-shallow-checkout/
 * https://github.com/Microsoft/vcpkg/blob/master/docs/about/faq.md#how-do-i-use-different-versions-of-a-library-on-one-machine
 * https://github.com/microsoft/vcpkg/issues/6727
+* https://devblogs.microsoft.com/cppblog/vcpkg-introducing-installation-options-with-feature-packages/

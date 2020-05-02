@@ -51,6 +51,20 @@ function(__vcpkg_cmake__parse_ini_file file_path variable_prefix)
     endforeach()
 endfunction()
 
+
 function(vcpkg_cmake_msg)
     message(STATUS "[vcpkg-cmake] " ${ARGN})
+endfunction()
+
+
+function(__vcpkg_cmake__list_to_string out_result separator)
+    set(result)
+    foreach (elem IN LISTS ARGN)
+        if (result)
+            set(result "${result}${separator}${elem}")
+        else()
+            set(result "${elem}")
+        endif()
+    endforeach()
+    set(${out_result} "${result}" PARENT_SCOPE)
 endfunction()

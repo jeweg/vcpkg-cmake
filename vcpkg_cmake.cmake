@@ -70,9 +70,10 @@ function (vcpkg_cmake_package package_name)
         message(FATAL_ERROR "vcpkg_cmake_package: package name must be specified!")
     endif()
     # cmake_parse_arguments(<prefix> <options> <one_value_keywords> <multi_value_keywords> args…)
-    cmake_parse_arguments(ARG "" "TRIPLET;COMMIT" "" ${ARGN})
+    cmake_parse_arguments(ARG "" "TRIPLET;COMMIT" "FEATURES" ${ARGN})
     file(APPEND "${__vcpkg_cmake__configuration_file}"
 "\n[${package_name}]\n\
 triplet=${ARG_TRIPLET}\n\
-commit_hash=${ARG_COMMIT}\n")
+commit_hash=${ARG_COMMIT}\n
+features=${ARG_FEATURES}")
 endfunction()

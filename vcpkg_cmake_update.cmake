@@ -31,7 +31,8 @@ if (ON)
     foreach (section IN LISTS config_sections)
         vcpkg_cmake_msg("  [${section}]")
         foreach (key IN LISTS config_section_${section}_keys)
-            vcpkg_cmake_msg("    ${key}=${config_section_${section}_value_for_${key}}")
+            __vcpkg_cmake__list_to_string(tmp ", " ${config_section_${section}_value_for_${key}})
+            vcpkg_cmake_msg("    ${key}=${tmp}")
         endforeach()
     endforeach()
 endif()
@@ -57,18 +58,28 @@ set(cmd_last_result)
 set(cmd_last_output)
 
 function(cmd_run)
-    cmake_parse_arguments(ARG "" "WORKING_DIRECTORY" "" ${ARGN})
+    cmake_parse_arguments(ARG "CATCH_OUTPUT" "WORKING_DIRECTORY" "" ${ARGN})
     if (NOT ARG_WORKING_DIRECTORY) 
         set(ARG_WORKING_DIRECTORY "${vcpkg_dir}")
     endif()
+
+    set(CMAKE_EXECUTE_PROCESS_COMMAND_ECHO STDOUT)
+
+    set(catch_output_args)
+    if (ARG_CATCH_OUTPUT) 
+        set(catch_output_args
+            OUTPUT_VARIABLE cmd_output
+            ERROR_VARIABLE cmd_output
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_STRIP_TRAILING_WHITESPACE
+        )
+    endif()
+
     execute_process(
         COMMAND ${ARG_UNPARSED_ARGUMENTS}
         WORKING_DIRECTORY "${ARG_WORKING_DIRECTORY}"
         RESULT_VARIABLE return_code
-        OUTPUT_VARIABLE cmd_output
-        ERROR_VARIABLE cmd_output 
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_STRIP_TRAILING_WHITESPACE
+        ${catch_output_args}
     )
     if (NOT return_code EQUAL 0)
         vcpkg_cmake_msg("Command failed: [${ARG_UNPARSED_ARGUMENTS}]")
@@ -79,7 +90,7 @@ function(cmd_run)
     endif()
     # Debug output
     if (OFF)
-        vcpkg_cmake_msg("running git command: [git ${ARG_UNPARSED_ARGUMENTS}]")
+        vcpkg_cmake_msg("running command: [${ARG_UNPARSED_ARGUMENTS}]")
         vcpkg_cmake_msg("  return code: ${return_code}")
         vcpkg_cmake_msg("  output: ${cmd_output}")
     endif()
@@ -149,12 +160,13 @@ if (needs_cloning)
 
 endif()
 
-# We now assume a valid vcpkg in the specified directory
+# We now assume a valid vcpkg clone in the specified directory.
+# Now figure out if it needs to be built (bootstrapped).
 
 function(check_if_vcpkg_stale out_result)
     set(vcpkg_exec_stale TRUE)
     if (EXISTS "${vcpkg_exec}") 
-        cmd_vcpkg(version)
+        cmd_vcpkg(version CATCH_OUTPUT)
         if (cmd_last_output MATCHES "version ([0-9]+\\.[0-9]+\\.[0-9]+)") 
             set(reported_version ${CMAKE_MATCH_1})
             set(version_file_contents)
@@ -178,7 +190,9 @@ if (is_stale)
     cmd_run("${vcpkg_bootstrap}")
     check_if_vcpkg_stale(is_stale)
     if (is_stale) 
-        vcpkg_cmake_msg("Bootstrapping failed!")
+        vcpkg_cmake_msg("Bootstrapping vcpkg failed!")
+        # TODO: maybe have a vcpkg_cmake_fatal
+        message(FATAL_ERROR "failure.")
     endif()
 endif()
 
@@ -187,10 +201,23 @@ vcpkg_cmake_msg("vcpkg executable okay.")
 # ===================================================================
 # Install vcpkg packages
 
-foreach (section IN LISTS config_sections)
-    if (NOT section STREQUAL "vcpkg")
-        set(triplet "${config_section_${section}_value_for_triplet}")
-        cmd_vcpkg(version)
+set(default_triplet "${config_section_vcpkg_value_for_default_triplet}")
+foreach (package_name IN LISTS config_sections)
+    if (NOT package_name STREQUAL "vcpkg")
+        set(triplet "${config_section_${package_name}_value_for_triplet}")
+        set(features "${config_section_${package_name}_value_for_features}")
+
+        # Note that for package foo, "vcpkg install foo[]:" is a valid command.
+
+        if (NOT triplet)
+            set(triplet "${default_triplet}")
+        endif()
+        __vcpkg_cmake__list_to_string(features_string "," ${features})
+        set(full_name "${package_name}[${features_string}]:${triplet}")
+
+        vcpkg_cmake_msg("=================================================")
+        vcpkg_cmake_msg("Installing ${package_name}[${features_string}]:${triplet}")
+        cmd_vcpkg(install ${full_name})
     endif()
 endforeach()
 
