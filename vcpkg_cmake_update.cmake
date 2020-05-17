@@ -1,4 +1,4 @@
-include(vcpkg_cmake_common.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/vcpkg_cmake_common.cmake)
 
 # Read the serialized configuration and make sure our vcpkg installation reflects that.
 # This code will be ran by vcpkg_cmake_end() and whenever the update_vcpkg target is built.
@@ -144,7 +144,7 @@ else()
 endif()
 
 if (needs_cloning)
-    vcpkg_cmake_msg("Cloning vcpkg...")
+    vcpkg_cmake_msg("Cloning vcpkg to \"${vcpkg_dir}\"...")
     file(MAKE_DIRECTORY "${vcpkg_dir}")
 
     cmd_git(clone "${vcpkg_repo_url}" . WORKING_DIRECTORY "${vcpkg_dir}")
@@ -209,11 +209,18 @@ foreach (package_name IN LISTS config_sections)
 
         # Note that for package foo, "vcpkg install foo[]:" is a valid command.
 
-        if (NOT triplet)
-            set(triplet "${default_triplet}")
+        set(triplet_part "${triplet}")
+        if (NOT triplet_part)
+            set(triplet_part "${default_triplet}")
         endif()
-        __vcpkg_cmake__list_to_string(features_string "," ${features})
-        set(full_name "${package_name}[${features_string}]:${triplet}")
+        if (triplet_part)
+            set(triplet_part ":${triplet_part")
+        endif()
+        __vcpkg_cmake__list_to_string(features_part "," ${features})
+        if (features_part)
+            set(features_part "[${features_string}]")
+        endif()
+        set(full_name "${package_name}${features_part}${triplet_part}")
 
         vcpkg_cmake_msg("=================================================")
         vcpkg_cmake_msg("Installing ${package_name}[${features_string}]:${triplet}")

@@ -1,5 +1,5 @@
 set(build_tree_root "${CMAKE_BINARY_DIR}")
-include(vcpkg_cmake_common.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/vcpkg_cmake_common.cmake)
 include(CMakeParseArguments)
 
 set(__vcpkg_cmake__vcpkg_dir)
@@ -57,7 +57,8 @@ endfunction()
 
 function (vcpkg_cmake_end)
     set(__vcpkg_cmake__in_block 0 PARENT_SCOPE)
-    include("${__vcpkg_cmake__update_script}")
+    include(${__vcpkg_cmake__update_script})
+    message("set CMAKE_TOOLCHAIN_FILE to <${__vcpkg_cmake__vcpkg_dir}/scripts/buildsystems/vcpkg.cmake>")
     set(CMAKE_TOOLCHAIN_FILE "${__vcpkg_cmake__vcpkg_dir}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "" FORCE)
 endfunction()
 

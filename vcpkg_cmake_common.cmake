@@ -4,7 +4,7 @@
 # We expect the variable build_tree_root to be set so we're mode-agnostic here.
 
 set(__vcpkg_cmake__configuration_file "${build_tree_root}/cmake-vcpkg-data.ini")
-set(__vcpkg_cmake__update_script "${CMAKE_SOURCE_DIR}/vcpkg_cmake_update.cmake")
+set(__vcpkg_cmake__update_script "${CMAKE_CURRENT_LIST_DIR}/vcpkg_cmake_update.cmake")
 
 message("build_tree_root = ${build_tree_root}")
 message("__vcpkg_cmake__configuration_file = ${__vcpkg_cmake__configuration_file}")
