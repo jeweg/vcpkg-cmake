@@ -45,8 +45,9 @@ function (vcpkg_cmake_begin)
 repo_url=${ARG_REPO_URL}\n\
 vcpkg_dir=${ARG_VCPKG_DIR}\n\
 default_commit=${ARG_COMMIT}\n\
-default_triplet=${ARG_DEFAULT_TRIPLET}\n")
-    # In script mode (-P) we don't know CMAKE_BINARY_DIR, so pass it in.
+default_triplet=${ARG_DEFAULT_TRIPLET}")
+
+    # Note that in script mode (-P) CMAKE_BINARY_DIR is not known, so we pass it.
     add_custom_target(update_vcpkg
         COMMAND ${CMAKE_COMMAND} -D build_tree_root=${CMAKE_BINARY_DIR} -P "${__vcpkg_cmake__update_script}"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -73,8 +74,8 @@ function (vcpkg_cmake_package package_name)
     # cmake_parse_arguments(<prefix> <options> <one_value_keywords> <multi_value_keywords> args…)
     cmake_parse_arguments(ARG "" "TRIPLET;COMMIT" "FEATURES" ${ARGN})
     file(APPEND "${__vcpkg_cmake__configuration_file}"
-"\n[${package_name}]\n\
+"\n\n[${package_name}]\n\
 triplet=${ARG_TRIPLET}\n\
-commit_hash=${ARG_COMMIT}\n
+commit_hash=${ARG_COMMIT}\n\
 features=${ARG_FEATURES}")
 endfunction()

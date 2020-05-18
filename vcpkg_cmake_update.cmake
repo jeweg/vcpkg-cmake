@@ -218,13 +218,18 @@ foreach (package_name IN LISTS config_sections)
         endif()
         __vcpkg_cmake__list_to_string(features_part "," ${features})
         if (features_part)
-            set(features_part "[${features_string}]")
+            set(features_part "[${features_part}]")
         endif()
         set(full_name "${package_name}${features_part}${triplet_part}")
 
         vcpkg_cmake_msg("=================================================")
-        vcpkg_cmake_msg("Installing ${package_name}[${features_string}]:${triplet}")
-        cmd_vcpkg(install ${full_name})
+        vcpkg_cmake_msg()
+        vcpkg_cmake_msg("Installing ${full_name}")
+        vcpkg_cmake_msg()
+        vcpkg_cmake_msg("=================================================")
+        # --recurse makes it possible to switch features. Without it,
+        # vcpkg won't recompile.
+        cmd_vcpkg(install --recurse ${full_name})
     endif()
 endforeach()
 
