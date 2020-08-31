@@ -76,52 +76,6 @@ function(vcm_dict_unset variable_prefix section key)
 endfunction()
 
 
-# Note that values are compared with STREQUAL.
-function(vcm_dict_equals variable_prefix1 variable_prefix2 result)
-    # Short-circuit comparison with itself
-	if (variable_prefix1 STREQUAL variable_prefix2)
-        set(${result} ON PARENT_SCOPE)
-        return()
-	endif()
-
-    # Loop through the union of both dicts' sections
-    set(all_sections ${${variable_prefix1}_sections} ${${variable_prefix2}_sections})
-    list(REMOVE_DUPLICATES all_sections)
-    foreach (section IN LISTS all_sections)
-
-		# If a section is missing from one of them, it's an early out.
-        if (NOT section IN_LIST ${variable_prefix1}_sections OR
-            NOT section IN_LIST ${variable_prefix2}_sections)
-			set(${result} OFF PARENT_SCOPE)
-			return()
-		endif()
-
-		# Otherwise do the same with the section's keys.
-		set(all_keys ${${variable_prefix1}_section_${section}_keys} ${${variable_prefix2}_section_${section}_keys})
-		list(REMOVE_DUPLICATES all_keys)
-        foreach (key IN LISTS all_keys)
-
-			if (NOT key IN_LIST ${variable_prefix1}_section_${section}_keys OR
-				NOT key IN_LIST ${variable_prefix2}_section_${section}_keys)
-				set(${result} OFF PARENT_SCOPE)
-				return()
-			endif()
-
-			# Lastly, compare values.
-			vcm_dict_get(${variable_prefix1} "${section}" "${key}" value1)
-			vcm_dict_get(${variable_prefix2} "${section}" "${key}" value2)
-            # Fun fact: if (NOT value1 STREQUAL value2) without quotes is
-            # for some reason true for empty string values.
-			if (NOT "${value1}" STREQUAL "${value2}")
-				set(${result} OFF PARENT_SCOPE)
-				return()
-			endif()
-        endforeach() # key loop
-    endforeach() # section loop
-	set(${result} ON PARENT_SCOPE)
-endfunction()
-
-
 function(vcm_dict_load variable_prefix filename)
 	file(STRINGS "${filename}" lines)
     set(current_section)
@@ -169,11 +123,17 @@ endfunction()
 
 
 function(vcm_dict_print variable_prefix)
+    cmake_parse_arguments(ARG "SKIP_EMPTY" "LINE_PREFIX" "" ${ARGN})
     foreach (section IN LISTS ${variable_prefix}_sections)
-        message(STATUS "[${section}]")
+        message(STATUS "${ARG_LINE_PREFIX}[${section}]")
         foreach (key IN LISTS ${variable_prefix}_section_${section}_keys)
-            list(JOIN ${variable_prefix}_section_${section}_value_for_${key} ", " joined)
-            message(STATUS "  ${key}=${joined}")
+            set(this_value_list ${variable_prefix}_section_${section}_value_for_${key})
+            list(LENGTH ${this_value_list} value_count)
+            if (ARG_SKIP_EMPTY AND NOT value_count)
+                continue()
+            endif()
+            list(JOIN ${this_value_list} ", " joined)
+            message(STATUS "${ARG_LINE_PREFIX}  ${key}=${joined}")
         endforeach()
     endforeach()
 endfunction()
