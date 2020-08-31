@@ -36,7 +36,8 @@ endfunction()
 function (vcpkg_cmake_end)
     set(_vcm_in_spec_block OFF PARENT_SCOPE)
 
-    vcm_dict_print(vcm_config)
+    vcm_msg("Current configuration:")
+    vcm_dict_print(vcm_config SKIP_EMPTY LINE_PREFIX "  ")
     vcm_dict_save(vcm_config ${_vcm_last_declared_config_file})
 
     add_custom_target(vcpkg-update
@@ -44,20 +45,14 @@ function (vcpkg_cmake_end)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         VERBATIM)
 
-	# Several early-outs, only then fall through to doing the full update checks.
-
+	# Checking possible early-outs, only then fall through to doing the full update checks.
     set(run_full_update ON)
     if (run_full_update AND EXISTS ${_vcm_last_actualized_config_file})
-        vcm_dict_load(actualized_config ${_vcm_last_actualized_config_file})
-        vcm_dict_equals(vcm_config actualized_config unchanged_config)
-        if (unchanged_config)
+        file(SHA1 "${_vcm_last_declared_config_file}" _vcm_hash_1)
+        file(SHA1 "${_vcm_last_actualized_config_file}" _vcm_hash_2)
+        if (_vcm_hash_1 STREQUAL _vcm_hash_2)
 			set(run_full_update OFF)
         endif()
-    endif()
-
-    if (NOT EXISTS "${vcpkg_exec}") 
-        # Override early out again regardless
-		set(run_full_update ON)
     endif()
 
     if (run_full_update)
