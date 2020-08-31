@@ -10,11 +10,9 @@ set(_vcm_last_declared_config_file "${vcm_build_tree_root}/vcpkg-cmake-config.in
 set(_vcm_last_actualized_config_file "${vcm_build_tree_root}/vcpkg-cmake-last-actualized-config.ini")
 set(_vcm_src_dir "${CMAKE_CURRENT_LIST_DIR}")
 
-
 function(vcm_msg)
     message(STATUS "[vcpkg-cmake] " ${ARGN})
 endfunction()
-
 
 set(_vcm_cmd_last_result)
 set(_vcm_cmd_last_output)
@@ -24,9 +22,7 @@ function(_vcm_cmd_run)
     if (NOT ARG_WORKING_DIRECTORY) 
         set(ARG_WORKING_DIRECTORY "${vcpkg_dir}")
     endif()
-
     set(CMAKE_EXECUTE_PROCESS_COMMAND_ECHO STDOUT)
-
     set(catch_output_args)
     if (ARG_CATCH_OUTPUT) 
         set(catch_output_args
@@ -36,7 +32,6 @@ function(_vcm_cmd_run)
             ERROR_STRIP_TRAILING_WHITESPACE
         )
     endif()
-
     execute_process(
         COMMAND ${ARG_UNPARSED_ARGUMENTS}
         WORKING_DIRECTORY "${ARG_WORKING_DIRECTORY}"
@@ -56,7 +51,6 @@ function(_vcm_cmd_run)
         vcm_msg("  return code: ${return_code}")
         vcm_msg("  output: ${cmd_output}")
     endif()
-    # TODO: maybe more error handling built-in.
     set(_vcm_cmd_last_result "${return_code}" PARENT_SCOPE)
     set(_vcm_cmd_last_output "${cmd_output}" PARENT_SCOPE)
     set(cmd_failed "${command_failed}" PARENT_SCOPE)
