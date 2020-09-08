@@ -14,6 +14,10 @@ function(vcm_msg)
     message(STATUS "[vcpkg-cmake] " ${ARGN})
 endfunction()
 
+function(vcm_fatal)
+    message(FATAL_ERROR "[vcpkg-cmake] " ${ARGN})
+endfunction()
+
 set(_vcm_cmd_last_result)
 set(_vcm_cmd_last_output)
 

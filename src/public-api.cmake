@@ -11,6 +11,10 @@ function (vcpkg_cmake_begin)
     cmake_parse_arguments(ARG "ENABLE_METRICS;SHALLOW_CLONE" "VCPKG_DIR;COMMIT;DEFAULT_TRIPLET;REPO_URL" "" ${ARGN})
     set(_vcm_in_block 1 PARENT_SCOPE)
 
+    if (ARG_UNPARSED_ARGUMENTS)
+        vcm_fatal("Unrecognized arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif()
+
     # Set unspecified arguments to defaults
     if (NOT ARG_VCPKG_DIR)
         set(ARG_VCPKG_DIR "${CMAKE_SOURCE_DIR}/3rd_party/vcpkg")
@@ -20,6 +24,19 @@ function (vcpkg_cmake_begin)
 
     if (NOT ARG_REPO_URL)
         set(ARG_REPO_URL "https://github.com/microsoft/vcpkg.git")
+    endif()
+
+    if (NOT ARG_DEFAULT_TRIPLET)
+        if (WIN32)
+            # On Windows set the default triplet explicitly, otherwise it selects 
+            # x86 (not x64) by default: https://github.com/microsoft/vcpkg/issues/1254
+            # Note that CMAKE_SIZEOF_VOID_P is unavailable at this point.
+            if (CMAKE_GENERATOR_PLATFORM STREQUAL x64)
+                set(ARG_DEFAULT_TRIPLET x64-windows)
+            else()
+                set(ARG_DEFAULT_TRIPLET x86-windows)
+            endif()
+        endif()
     endif()
 
     vcm_dict_set(vcm_config vcpkg repo_url "${ARG_REPO_URL}")
@@ -47,11 +64,17 @@ function (vcpkg_cmake_end)
 
 	# Checking possible early-outs, only then fall through to doing the full update checks.
     set(run_full_update ON)
-    if (run_full_update AND EXISTS ${_vcm_last_actualized_config_file})
+    vcm_msg("vcpkg dir is \"${_vcm_vcpkg_dir}\"")
+
+    if (NOT run_full_update AND NOT EXISTS "${_vcm_vcpkg_dir}")
+        set(run_full_update ON)
+    endif()
+
+    if (NOT run_full_update AND EXISTS ${_vcm_last_actualized_config_file})
         file(SHA1 "${_vcm_last_declared_config_file}" _vcm_hash_1)
         file(SHA1 "${_vcm_last_actualized_config_file}" _vcm_hash_2)
-        if (_vcm_hash_1 STREQUAL _vcm_hash_2)
-			set(run_full_update OFF)
+        if (NOT _vcm_hash_1 STREQUAL _vcm_hash_2)
+			set(run_full_update ON)
         endif()
     endif()
 
