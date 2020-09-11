@@ -63,7 +63,7 @@ function (vcpkg_cmake_end)
         VERBATIM)
 
 	# Checking possible early-outs, only then fall through to doing the full update checks.
-    set(run_full_update ON)
+    set(run_full_update OFF)
     vcm_msg("vcpkg dir is \"${_vcm_vcpkg_dir}\"")
 
     if (NOT run_full_update AND NOT EXISTS "${_vcm_vcpkg_dir}")
